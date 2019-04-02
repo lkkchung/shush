@@ -1,29 +1,26 @@
-const int MIC = 0; //the microphone amplifier output is connected to pin A0
-int adc;
-int dB, PdB; //the variable that will hold the value read from the microphone each time
+/*
+  AnalogReadSerial
 
+  Reads an analog input on pin 0, prints the result to the Serial Monitor.
+  Graphical representation is available using Serial Plotter (Tools > Serial Plotter menu).
+  Attach the center pin of a potentiometer to pin A0, and the outside pins to +5V and ground.
+
+  This example code is in the public domain.
+
+  http://www.arduino.cc/en/Tutorial/AnalogReadSerial
+*/
+
+// the setup routine runs once when you press reset:
 void setup() {
-    Serial.begin(9600); //sets the baud rate at 9600 so we can check the values the microphone is obtaining on the Serial Monitor
-  pinMode(3, OUTPUT);
+  // initialize serial communication at 9600 bits per second:
+  Serial.begin(9600);
 }
 
-void loop(){
-
-  PdB = dB; //Store the previous of dB here
-  
-adc= analogRead(MIC); //Read the ADC value from amplifer 
-//Serial.println (adc);//Print ADC for initial calculation 
-dB = (adc+83.2073) / 11.003; //Convert ADC value to dB using Regression values
-
-if (PdB!=dB)
-Serial.println (dB);
-
-if (dB>20)
-{
-  digitalWrite(3, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(200);                       // wait for a second
-  digitalWrite(3, LOW); 
-}
-//delay(100);
-
+// the loop routine runs over and over again forever:
+void loop() {
+  // read the input on analog pin 0:
+  int sensorValue = analogRead(A0);
+  // print out the value you read:
+  Serial.println(sensorValue);
+  delay(1);        // delay in between reads for stability
 }

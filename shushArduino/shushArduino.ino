@@ -22,6 +22,11 @@ unsigned int sample;
 WiFiSSLClient net;
 MqttClient mqtt(net);
 
+int totalSteps = 200;
+int currentStep = 100;
+
+int lastValue = 0;
+
 String testTopic = "shush/" + DEVICE_ID + "/test";
 String soundTopic = "shush/" + DEVICE_ID + "/sound";
 
@@ -31,6 +36,12 @@ unsigned long lastMillis = 0;
 
 
 void setup() {
+  pinMode(stp, OUTPUT);
+  pinMode(dir, OUTPUT);
+  pinMode(MS1, OUTPUT);
+  pinMode(MS2, OUTPUT);
+  pinMode(EN, OUTPUT);
+  resetEDPins(); //Set step, direction, microstep and enable pins to default states
   // initialize serial communication at 9600 bits per second:
   Serial.begin(9600);
 
@@ -40,6 +51,7 @@ void setup() {
   for (i = 0; i < peaksLength; i++){
     peaks[i] = 0;
   }
+  // digitalWrite(EN, HIGH);
 }
 
 // the loop routine runs over and over again forever:
@@ -99,6 +111,25 @@ void loop() {
   //   mqtt.print(newValue); 
   //   mqtt.endMessage();
   // }  
+
+  if(lastValue > newValue && currentStep < totalSteps){
+    digitalWrite(dir, LOW);
+    digitalWrite(stp, HIGH); //Trigger one step
+    currentStep++;
+    Serial.println("forward step");
+  }
+
+  if(lastValue < newValue && currentStep >= 0){
+    digitalWrite(dir, HIGH);
+    digitalWrite(stp, HIGH); //Trigger one step
+    currentStep--;
+    Serial.println("back step");
+  }
+
+  delay(1);
+  digitalWrite(stp, LOW); //Pull step pin low so it can be triggered again
+  resetEDPins();
+  lastValue = newValue;
 }
 
 void connectWiFi() {
@@ -147,33 +178,6 @@ void printWiFiStatus() {
   Serial.println(ip);
 }
 
-void ForwardBackwardStep()
-{
-  Serial.println("Alternate between stepping forward and reverse.");
-  for (int x = 1; x < 5; x++) //Loop the forward stepping enough times for motion to be visible
-  {
-    //Read direction pin state and change it
-    state = digitalRead(dir);
-    if (state == HIGH)
-    {
-      digitalWrite(dir, LOW);
-    }
-    else if (state == LOW)
-    {
-      digitalWrite(dir, HIGH);
-    }
-
-    for (int y = 1; y < 1000; y++)
-    {
-      digitalWrite(stp, HIGH); //Trigger one step
-      delay(1);
-      digitalWrite(stp, LOW); //Pull step pin low so it can be triggered again
-      delay(1);
-    }
-  }
-  Serial.println("Enter new option:");
-  Serial.println();
-}
 
 int loudness() {
    unsigned long startMillis= millis();                   // Start of sample window
@@ -200,4 +204,14 @@ int loudness() {
    }
    peakToPeak = signalMax - signalMin;                    // max - min = peak-peak amplitude
    return peakToPeak;
+}
+
+//Reset Easy Driver pins to default states
+void resetEDPins()
+{
+  digitalWrite(stp, LOW);
+  digitalWrite(dir, LOW);
+  digitalWrite(MS1, HIGH);
+  digitalWrite(MS2, HIGH);
+  // digitalWrite(EN, HIGH);
 }

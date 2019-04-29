@@ -4,6 +4,21 @@
 
 #include "config.h"
 
+#define stp 2
+#define dir 3
+#define MS1 4
+#define MS2 5
+#define EN  6
+
+int state;
+int i;
+
+const int peaksLength = 9;
+int peaks[peaksLength];
+
+const int sampleWindow = 50;                              // Sample window width in mS (50 mS = 20Hz)
+unsigned int sample;
+
 WiFiSSLClient net;
 MqttClient mqtt(net);
 
@@ -21,6 +36,10 @@ void setup() {
 
   Serial.println("Connecting WiFi");
   connectWiFi();
+
+  for (i = 0; i < peaksLength; i++){
+    peaks[i] = 0;
+  }
 }
 
 // the loop routine runs over and over again forever:
@@ -29,34 +48,57 @@ void loop() {
     connectWiFi();
   }
 
-  if (!mqtt.connected()) {
-    connectMQTT();
-  }
+  // if (!mqtt.connected()) {
+  //   connectMQTT();
+  // }
   
   // poll for new MQTT messages and send keep alives
-  mqtt.poll();
+  // mqtt.poll();
+
+  for (i = 1; i < peaksLength; i++){
+    peaks[i-1] = peaks[i];
+  }
 
   // read the input on analog pin 0:
   int sensorValue = analogRead(A1);
-  int newValue = abs(512 - sensorValue);
+
+  peaks[peaksLength-1] = loudness();
+
+  int newValue = 0;
+  int smoothWeight = 0;
+
+
+  for (i = 0; i < peaksLength; i++){
+    int c = i;
+    if(i >= peaksLength){
+      c = abs(i - peaksLength);
+    }
+    newValue += peaks[i];
+    smoothWeight += c;
+  }
+
+  newValue /= smoothWeight;
+
+  // int newValue = abs(512 - sensorValue);
   // print out the value you read:
   Serial.println(newValue);
   // delay(500);        // delay in between reads for stability
 
-  if (millis() - lastMillis > publishInterval) {
-    lastMillis = millis();
 
-    Serial.print("Sound level: ");
-    Serial.println(newValue);
+  // if (millis() - lastMillis > publishInterval) {
+  //   lastMillis = millis();
+
+  //   Serial.print("Sound level: ");
+  //   Serial.println(newValue);
     
-    mqtt.beginMessage(testTopic);
-    mqtt.print("Hello, world!"); 
-    mqtt.endMessage();
+  //   mqtt.beginMessage(testTopic);
+  //   mqtt.print("Hello, world!"); 
+  //   mqtt.endMessage();
 
-    mqtt.beginMessage(soundTopic);
-    mqtt.print(newValue); 
-    mqtt.endMessage();
-  }  
+  //   mqtt.beginMessage(soundTopic);
+  //   mqtt.print(newValue); 
+  //   mqtt.endMessage();
+  // }  
 }
 
 void connectWiFi() {
@@ -103,4 +145,59 @@ void printWiFiStatus() {
   IPAddress ip = WiFi.localIP();
   Serial.print("IP Address: ");
   Serial.println(ip);
+}
+
+void ForwardBackwardStep()
+{
+  Serial.println("Alternate between stepping forward and reverse.");
+  for (int x = 1; x < 5; x++) //Loop the forward stepping enough times for motion to be visible
+  {
+    //Read direction pin state and change it
+    state = digitalRead(dir);
+    if (state == HIGH)
+    {
+      digitalWrite(dir, LOW);
+    }
+    else if (state == LOW)
+    {
+      digitalWrite(dir, HIGH);
+    }
+
+    for (int y = 1; y < 1000; y++)
+    {
+      digitalWrite(stp, HIGH); //Trigger one step
+      delay(1);
+      digitalWrite(stp, LOW); //Pull step pin low so it can be triggered again
+      delay(1);
+    }
+  }
+  Serial.println("Enter new option:");
+  Serial.println();
+}
+
+int loudness() {
+   unsigned long startMillis= millis();                   // Start of sample window
+   float peakToPeak = 0;                                  // peak-to-peak level
+ 
+   unsigned int signalMax = 0;                            //minimum value
+   unsigned int signalMin = 1024;                         //maximum value
+ 
+                                                          // collect data for 50 mS
+   while (millis() - startMillis < sampleWindow)
+   {
+      sample = analogRead(A1);                             //get reading from microphone
+      if (sample < 1024)                                  // toss out spurious readings
+      {
+         if (sample > signalMax)
+         {
+            signalMax = sample;                           // save just the max levels
+         }
+         else if (sample < signalMin)
+         {
+            signalMin = sample;                           // save just the min levels
+         }
+      }
+   }
+   peakToPeak = signalMax - signalMin;                    // max - min = peak-peak amplitude
+   return peakToPeak;
 }

@@ -93,7 +93,8 @@ void loop() {
 
   // int newValue = abs(512 - sensorValue);
   // print out the value you read:
-  Serial.println(newValue);
+  Serial.print(newValue);
+  Serial.print(" | ");
   // delay(500);        // delay in between reads for stability
 
 
@@ -112,24 +113,47 @@ void loop() {
   //   mqtt.endMessage();
   // }  
 
-  if(lastValue > newValue && currentStep < totalSteps){
-    digitalWrite(dir, LOW);
-    digitalWrite(stp, HIGH); //Trigger one step
-    currentStep++;
-    Serial.println("forward step");
-  }
+  // if(lastValue > newValue && currentStep < totalSteps){
+  //   digitalWrite(dir, LOW);
+  //   digitalWrite(stp, HIGH); //Trigger one step
+  //   currentStep++;
+  //   Serial.println("forward step");
+  // }
 
-  if(lastValue < newValue && currentStep >= 0){
-    digitalWrite(dir, HIGH);
-    digitalWrite(stp, HIGH); //Trigger one step
-    currentStep--;
-    Serial.println("back step");
-  }
+  // if(lastValue < newValue && currentStep >= 0){
+  //   digitalWrite(dir, HIGH);
+  //   digitalWrite(stp, HIGH); //Trigger one step
+  //   currentStep--;
+  //   Serial.println("back step");
+  // }
 
-  delay(1);
-  digitalWrite(stp, LOW); //Pull step pin low so it can be triggered again
-  resetEDPins();
+  // if(newValue - currentStep > 0) {
+  //   int diff = newValue - currentStep;
+  //   for(i = 0; i < 100; i++){
+  //     digitalWrite(dir, LOW);
+  //     digitalWrite(stp, HIGH);
+  //     delay(1);
+  //     digitalWrite(stp, LOW);
+  //     currentStep++;
+  //   }
+  // }
+
+  // if(newValue - currentStep < -20) {
+  //   int diff = currentStep - newValue;
+  //   for(i = 0; i < 100; i++){
+  //     digitalWrite(dir, HIGH);
+  //     digitalWrite(stp, HIGH);
+  //     delay(1);
+  //     digitalWrite(stp, LOW);
+  //     currentStep--;
+  //   }
+  // }
+
+  // delay(1);
+  // digitalWrite(stp, LOW); //Pull step pin low so it can be triggered again
+  // resetEDPins();
   lastValue = newValue;
+  Serial.println(currentStep);
 }
 
 void connectWiFi() {

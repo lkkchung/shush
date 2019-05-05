@@ -24,15 +24,19 @@ WiFiClient net;
 MqttClient mqtt(net);
 
 int totalSteps = 200;
-int currentStep = 100;
+int pos = 0; //value of 0 to 2000
+float stepDir = 1; //value of 1 or negative 1;
+
 
 int lastValue = 0;
 
 String testTopic = DEVICE_ID + "/test";
 String soundTopic = DEVICE_ID + "/sound";
+String ledTopic = DEVICE_ID + "/led";
+String stepperTopic = DEVICE_ID + "/stepper";
 
 // Publish every 10 seconds for the workshop. Real world apps need this data every 5 or 10 minutes.
-unsigned long publishInterval = 0.5 * 1000;
+unsigned long publishInterval = 2 * 1000;
 unsigned long lastMillis = 0;
 
 
@@ -42,6 +46,7 @@ void setup() {
   pinMode(MS1, OUTPUT);
   pinMode(MS2, OUTPUT);
   pinMode(EN, OUTPUT);
+  pinMode(7, OUTPUT);
   resetEDPins(); //Set step, direction, microstep and enable pins to default states
   // initialize serial communication at 9600 bits per second:
   Serial.begin(9600);
@@ -53,6 +58,8 @@ void setup() {
     peaks[i] = 0;
   }
   // digitalWrite(EN, HIGH);
+  // define function for incoming MQTT messages
+  mqtt.onMessage(messageReceived);
 }
 
 // the loop routine runs over and over again forever:
@@ -80,7 +87,6 @@ void loop() {
   int newValue = 0;
   int smoothWeight = 0;
 
-
   for (i = 0; i < peaksLength; i++){
     int c = i;
     if(i >= peaksLength){
@@ -92,69 +98,113 @@ void loop() {
 
   newValue /= smoothWeight;
 
+  lastValue --;
+  if (lastValue > newValue) {
+    newValue = lastValue;
+  } else {
+    lastValue = newValue;
+  }
+
   // int newValue = abs(512 - sensorValue);
   // print out the value you read:
-  Serial.print(newValue);
-  Serial.print(" | ");
+
+
+  int dest = newValue; //value of 12 to 197
+  char user_input = Serial.read();
+  pos = map(analogRead(A2), flexHigh, flexLow, 60, 180);
+
+  int dist = dest - pos;
+
+  if (dist > 0) {
+    digitalWrite(dir, HIGH);
+    // stepDir = 1;
+  } else {
+    digitalWrite(dir, LOW);
+    // stepDir = -1;
+  }
+
+  int newDist = abs(dist);
+  
+  int spd = newDist;
+
+  if (spd <= 150){
+    spd /= 3;    
+  } else {
+    spd = 49;
+  }
+
+  // Serial.print(" | ");
   // delay(500);        // delay in between reads for stability
+  stepping(spd);
 
+  if (millis() - lastMillis > publishInterval) {
+    lastMillis = millis();
 
-  // if (millis() - lastMillis > publishInterval) {
-  //   lastMillis = millis();
+    Serial.print("Sound level: ");
+    Serial.println(newValue);
 
-  //   Serial.print("Sound level: ");
-  //   Serial.println(newValue);
-    
-  //   mqtt.beginMessage(testTopic);
-  //   mqtt.print("Hello, world!"); 
-  //   mqtt.endMessage();
+    mqtt.beginMessage(soundTopic);
+    mqtt.print(newValue); 
+    mqtt.endMessage();
+  }  
+  
+  Serial.print(dest);
+  Serial.print(" s|p ");
 
-  //   mqtt.beginMessage(soundTopic);
-  //   mqtt.print(newValue); 
-  //   mqtt.endMessage();
-  // }  
+}
 
-  // if(lastValue > newValue && currentStep < totalSteps){
-  //   digitalWrite(dir, LOW);
-  //   digitalWrite(stp, HIGH); //Trigger one step
-  //   currentStep++;
-  //   Serial.println("forward step");
-  // }
+int loudness() {
+   unsigned long startMillis= millis();                   // Start of sample window
+   float peakToPeak = 0;                                  // peak-to-peak level
+ 
+   unsigned int signalMax = 0;                            //minimum value
+   unsigned int signalMin = 1024;                         //maximum value
+ 
+                                                          // collect data for 50 mS
+   while (millis() - startMillis < sampleWindow)
+   {
+      sample = analogRead(A1);                             //get reading from microphone
+      // Serial.println(sample);
+      if (sample < 1024)                                  // toss out spurious readings
+      {
+         if (sample > signalMax)
+         {
+            signalMax = sample;                           // save just the max levels
+         }
+         else if (sample < signalMin)
+         {
+            signalMin = sample;                           // save just the min levels
+         }
+      }
+   }
+   peakToPeak = signalMax - signalMin;                    // max - min = peak-peak amplitude
+   return peakToPeak;
 
-  // if(lastValue < newValue && currentStep >= 0){
-  //   digitalWrite(dir, HIGH);
-  //   digitalWrite(stp, HIGH); //Trigger one step
-  //   currentStep--;
-  //   Serial.println("back step");
-  // }
+}
 
-  // if(newValue - currentStep > 0) {
-  //   int diff = newValue - currentStep;
-  //   for(i = 0; i < 100; i++){
-  //     digitalWrite(dir, LOW);
-  //     digitalWrite(stp, HIGH);
+void stepping(int spd) {
+  // for (int i = 0; i < 50 ; i++) {
+  //   if (i < spd) {
+  //     digitalWrite(2, HIGH);
+  //   } else {
+  //     digitalWrite(2, LOW);
   //     delay(1);
-  //     digitalWrite(stp, LOW);
-  //     currentStep++;
   //   }
+  //   pos += stepDir;
   // }
+  if(pos > 0 && pos < 180){
+  digitalWrite(stp, HIGH);
+  }
+  Serial.println(pos);
+}
 
-  // if(newValue - currentStep < -20) {
-  //   int diff = currentStep - newValue;
-  //   for(i = 0; i < 100; i++){
-  //     digitalWrite(dir, HIGH);
-  //     digitalWrite(stp, HIGH);
-  //     delay(1);
-  //     digitalWrite(stp, LOW);
-  //     currentStep--;
-  //   }
-  // }
-
-  // delay(1);
-  // digitalWrite(stp, LOW); //Pull step pin low so it can be triggered again
-  // resetEDPins();
-  lastValue = newValue;
-  Serial.println(currentStep);
+//Reset Easy Driver pins to default states
+void resetEDPins() {
+  digitalWrite(stp, LOW);
+  digitalWrite(dir, LOW);
+  digitalWrite(MS1, HIGH);
+  digitalWrite(MS2, HIGH);
+  // digitalWrite(EN, HIGH);
 }
 
 void connectWiFi() {
@@ -189,12 +239,12 @@ void connectWiFi() {
       Serial.println((WiFi.encryptionType(i) == ENC_TYPE_NONE) ? " " : "*");
 
       int compVal;
-      for (int j = 0; i < 2; i++){
-        compVal = strcmp(WiFi.SSID(i), WIFI_SSID[i]);
+      for (int j = 0; j < 2; j++){
+        compVal = strcmp(WiFi.SSID(i), WIFI_SSID[j]);
         if (compVal == 0){
           Serial.print("Connecting to");
           Serial.println(WiFi.SSID(i));
-          ssidChoice = i;
+          ssidChoice = j;
         }
 
       }
@@ -203,9 +253,6 @@ void connectWiFi() {
   }
   Serial.println("");
 
-  // char WIFI_SSID[] = WIFI_SSID_A[];
-  // char WIFI_PASSWORD[] = WIFI_PASSWORD_A[];
-
   Serial.print("Attempting to connect to SSID: ");
   Serial.print(WIFI_SSID[ssidChoice]);
   Serial.print(" ");
@@ -213,13 +260,27 @@ void connectWiFi() {
   while (WiFi.begin(WIFI_SSID[ssidChoice], WIFI_PASSWORD[ssidChoice]) != WL_CONNECTED) {
     // failed, retry
     Serial.print(".");
-    delay(3000);
+    digitalWrite(7, HIGH);
+    delay(750);
+    digitalWrite(7, LOW);
+    delay(750);
+    digitalWrite(7, HIGH);
+    delay(750);
+    digitalWrite(7, LOW);
+    delay(750);
   }
   
 
   Serial.println("Connected to WiFi");
   printWiFiStatus();
 
+}
+
+void printWiFiStatus() {
+  // print your WiFi IP address:
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
 }
 
 void connectMQTT() {
@@ -231,53 +292,36 @@ void connectMQTT() {
     Serial.print(".");
     Serial.print("MQTT connection failed! Error code = ");
     Serial.println(mqtt.connectError());
-    delay(5000);
+    digitalWrite(7, HIGH);
+    delay(500);
+    digitalWrite(7, LOW);
+    delay(500);
+    digitalWrite(7, HIGH);
+    delay(500);
+    digitalWrite(7, LOW);
+    delay(1000);
   }
 
   Serial.println("connected.");
+
+  mqtt.subscribe(ledTopic);
+  Serial.println("connected to led topic.");  
+  mqtt.subscribe(stepperTopic);
+  Serial.println("connected to led topic.");
 }
 
-void printWiFiStatus() {
-  // print your WiFi IP address:
-  IPAddress ip = WiFi.localIP();
-  Serial.print("IP Address: ");
-  Serial.println(ip);
-}
-
-
-int loudness() {
-   unsigned long startMillis= millis();                   // Start of sample window
-   float peakToPeak = 0;                                  // peak-to-peak level
- 
-   unsigned int signalMax = 0;                            //minimum value
-   unsigned int signalMin = 1024;                         //maximum value
- 
-                                                          // collect data for 50 mS
-   while (millis() - startMillis < sampleWindow)
-   {
-      sample = analogRead(A1);                             //get reading from microphone
-      if (sample < 1024)                                  // toss out spurious readings
-      {
-         if (sample > signalMax)
-         {
-            signalMax = sample;                           // save just the max levels
-         }
-         else if (sample < signalMin)
-         {
-            signalMin = sample;                           // save just the min levels
-         }
-      }
-   }
-   peakToPeak = signalMax - signalMin;                    // max - min = peak-peak amplitude
-   return peakToPeak;
-}
-
-//Reset Easy Driver pins to default states
-void resetEDPins()
-{
-  digitalWrite(stp, LOW);
-  digitalWrite(dir, LOW);
-  digitalWrite(MS1, HIGH);
-  digitalWrite(MS2, HIGH);
-  // digitalWrite(EN, HIGH);
+void messageReceived(int messageSize) {
+  String topic = mqtt.messageTopic();
+  String payload = mqtt.readString();
+  Serial.println("incoming: " + topic + " - " + messageSize + " ");
+  Serial.println(payload);
+  if (payload == "ON") {
+    // turn the LED on
+    digitalWrite(7, HIGH);
+  } else if (payload == "OFF") {
+    // turn the LED off
+    digitalWrite(7, LOW);    
+  } else {
+    analogWrite(7, payload.toInt());
+  }
 }

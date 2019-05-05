@@ -33,6 +33,7 @@ int lastValue = 0;
 String testTopic = DEVICE_ID + "/test";
 String soundTopic = DEVICE_ID + "/sound";
 String ledTopic = DEVICE_ID + "/led";
+String sensorTopic = DEVICE_ID + "/sensor";
 String stepperTopic = DEVICE_ID + "/stepper";
 
 // Publish every 10 seconds for the workshop. Real world apps need this data every 5 or 10 minutes.
@@ -127,11 +128,11 @@ void loop() {
   
   int spd = newDist;
 
-  if (spd <= 150){
-    spd /= 3;    
-  } else {
-    spd = 49;
-  }
+  // if (spd <= 150){
+  //   spd /= 3;    
+  // } else {
+  //   spd = 49;
+  // }
 
   // Serial.print(" | ");
   // delay(500);        // delay in between reads for stability
@@ -145,6 +146,10 @@ void loop() {
 
     mqtt.beginMessage(soundTopic);
     mqtt.print(newValue); 
+    mqtt.endMessage();
+
+    mqtt.beginMessage(sensorTopic);
+    mqtt.print(pos); 
     mqtt.endMessage();
   }  
   
@@ -192,7 +197,7 @@ void stepping(int spd) {
   //   }
   //   pos += stepDir;
   // }
-  if(pos > 0 && pos < 180){
+  if(pos > 0 && pos < 170){
   digitalWrite(stp, HIGH);
   }
   Serial.println(pos);

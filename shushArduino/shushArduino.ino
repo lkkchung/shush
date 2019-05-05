@@ -19,7 +19,8 @@ int peaks[peaksLength];
 const int sampleWindow = 50;                              // Sample window width in mS (50 mS = 20Hz)
 unsigned int sample;
 
-WiFiSSLClient net;
+// WiFiSSLClient net;
+WiFiClient net;
 MqttClient mqtt(net);
 
 int totalSteps = 200;
@@ -27,8 +28,8 @@ int currentStep = 100;
 
 int lastValue = 0;
 
-String testTopic = "shush/" + DEVICE_ID + "/test";
-String soundTopic = "shush/" + DEVICE_ID + "/sound";
+String testTopic = DEVICE_ID + "/test";
+String soundTopic = DEVICE_ID + "/sound";
 
 // Publish every 10 seconds for the workshop. Real world apps need this data every 5 or 10 minutes.
 unsigned long publishInterval = 0.5 * 1000;
@@ -60,12 +61,12 @@ void loop() {
     connectWiFi();
   }
 
-  // if (!mqtt.connected()) {
-  //   connectMQTT();
-  // }
+  if (!mqtt.connected()) {
+    connectMQTT();
+  }
   
   // poll for new MQTT messages and send keep alives
-  // mqtt.poll();
+  mqtt.poll();
 
   for (i = 1; i < peaksLength; i++){
     peaks[i-1] = peaks[i];
@@ -163,19 +164,58 @@ void connectWiFi() {
     // don't continue
     while (true);
   }
-
   Serial.print("WiFi firmware version ");
   Serial.println(WiFi.firmwareVersion());
   
+  Serial.println("scan start");
+
+  // WiFi.scanNetworks will return the number of networks found
+  int n = WiFi.scanNetworks();
+  int ssidChoice = 0;
+  Serial.println("scan done");
+  if (n == 0) {
+    Serial.println("no networks found");
+  } else {
+    Serial.print(n);
+    Serial.println(" networks found");
+    for (int i = 0; i < n; ++i) {
+      // Print SSID and RSSI for each network found
+      Serial.print(i + 1);
+      Serial.print(": ");
+      Serial.print(WiFi.SSID(i));
+      Serial.print(" (");
+      Serial.print(WiFi.RSSI(i));
+      Serial.print(")");
+      Serial.println((WiFi.encryptionType(i) == ENC_TYPE_NONE) ? " " : "*");
+
+      int compVal;
+      for (int j = 0; i < 2; i++){
+        compVal = strcmp(WiFi.SSID(i), WIFI_SSID[i]);
+        if (compVal == 0){
+          Serial.print("Connecting to");
+          Serial.println(WiFi.SSID(i));
+          ssidChoice = i;
+        }
+
+      }
+      delay(10);
+    }
+  }
+  Serial.println("");
+
+  // char WIFI_SSID[] = WIFI_SSID_A[];
+  // char WIFI_PASSWORD[] = WIFI_PASSWORD_A[];
+
   Serial.print("Attempting to connect to SSID: ");
-  Serial.print(WIFI_SSID);
+  Serial.print(WIFI_SSID[ssidChoice]);
   Serial.print(" ");
 
-  while (WiFi.begin(WIFI_SSID, WIFI_PASSWORD) != WL_CONNECTED) {
+  while (WiFi.begin(WIFI_SSID[ssidChoice], WIFI_PASSWORD[ssidChoice]) != WL_CONNECTED) {
     // failed, retry
     Serial.print(".");
     delay(3000);
   }
+  
 
   Serial.println("Connected to WiFi");
   printWiFiStatus();
@@ -189,6 +229,8 @@ void connectMQTT() {
 
   while (!mqtt.connect(MQTT_BROKER, MQTT_PORT)) {
     Serial.print(".");
+    Serial.print("MQTT connection failed! Error code = ");
+    Serial.println(mqtt.connectError());
     delay(5000);
   }
 

@@ -13,7 +13,7 @@
 int state;
 int i;
 
-const int peaksLength = 9;
+const int peaksLength = 10;
 int peaks[peaksLength];
 
 const int sampleWindow = 50;                              // Sample window width in mS (50 mS = 20Hz)
@@ -25,16 +25,20 @@ MqttClient mqtt(net);
 
 int totalSteps = 200;
 int pos = 0; //value of 0 to 2000
-float stepDir = 1; //value of 1 or negative 1;
+// int stepDir = 1; //value of 1 or negative 1;
+bool closing = false;
 
 
 int lastValue = 0;
+int levelHigh = 180;
+int levelLow = 60;
 
 String testTopic = DEVICE_ID + "/test";
 String soundTopic = DEVICE_ID + "/sound";
 String ledTopic = DEVICE_ID + "/led";
 String sensorTopic = DEVICE_ID + "/sensor";
 String stepperTopic = DEVICE_ID + "/stepper";
+String statusTopic = DEVICE_ID + "/status";
 
 // Publish every 10 seconds for the workshop. Real world apps need this data every 5 or 10 minutes.
 unsigned long publishInterval = 2 * 1000;
@@ -80,8 +84,9 @@ void loop() {
     peaks[i-1] = peaks[i];
   }
 
-  // read the input on analog pin 0:
-  int sensorValue = analogRead(A1);
+
+  // int sensorValue = analogRead(A1);
+  int potValue = analogRead(A2);
 
   peaks[peaksLength-1] = loudness();
 
@@ -106,37 +111,13 @@ void loop() {
     lastValue = newValue;
   }
 
-  // int newValue = abs(512 - sensorValue);
-  // print out the value you read:
-
-
-  int dest = newValue; //value of 12 to 197
-  char user_input = Serial.read();
-  pos = map(analogRead(A2), flexHigh, flexLow, 60, 180);
-
-  int dist = dest - pos;
-
-  if (dist > 0) {
+  if(closing == true){
     digitalWrite(dir, HIGH);
-    // stepDir = 1;
-  } else {
+  } else if(closing == false){
     digitalWrite(dir, LOW);
-    // stepDir = -1;
   }
-
-  int newDist = abs(dist);
   
-  int spd = newDist;
-
-  // if (spd <= 150){
-  //   spd /= 3;    
-  // } else {
-  //   spd = 49;
-  // }
-
-  // Serial.print(" | ");
-  // delay(500);        // delay in between reads for stability
-  stepping(spd);
+  digitalWrite(stp, HIGH);
 
   if (millis() - lastMillis > publishInterval) {
     lastMillis = millis();
@@ -149,13 +130,14 @@ void loop() {
     mqtt.endMessage();
 
     mqtt.beginMessage(sensorTopic);
-    mqtt.print(pos); 
+    mqtt.print(potValue); 
     mqtt.endMessage();
-  }  
-  
-  Serial.print(dest);
-  Serial.print(" s|p ");
 
+    mqtt.beginMessage(statusTopic);
+    mqtt.print(closing); 
+    mqtt.endMessage();
+
+  }  
 }
 
 int loudness() {
@@ -182,25 +164,21 @@ int loudness() {
          }
       }
    }
-   peakToPeak = signalMax - signalMin;                    // max - min = peak-peak amplitude
+   peakToPeak = signalMax - signalMin;  
+   Serial.println(peakToPeak);                  // max - min = peak-peak amplitude
    return peakToPeak;
 
 }
 
 void stepping(int spd) {
-  // for (int i = 0; i < 50 ; i++) {
-  //   if (i < spd) {
-  //     digitalWrite(2, HIGH);
-  //   } else {
-  //     digitalWrite(2, LOW);
-  //     delay(1);
-  //   }
-  //   pos += stepDir;
-  // }
-  if(pos > 0 && pos < 170){
-  digitalWrite(stp, HIGH);
+  for (int i = 0; i < 50 ; i++) {
+    if (i < spd) {
+      digitalWrite(2, LOW);
+    } else {
+      digitalWrite(2, HIGH);
+      delay(1);
+    }
   }
-  Serial.println(pos);
 }
 
 //Reset Easy Driver pins to default states
@@ -326,7 +304,9 @@ void messageReceived(int messageSize) {
   } else if (payload == "OFF") {
     // turn the LED off
     digitalWrite(7, LOW);    
-  } else {
-    analogWrite(7, payload.toInt());
+  } else if(payload == "C"){
+    closing = true;
+  } else if(payload == "O"){
+    closing = false;
   }
 }

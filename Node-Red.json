@@ -1,1 +1,363 @@
-[{"id":"66ece34c.1cb6dc","type":"function","z":"8c33d01c.9cece","name":"","func":"switch(msg.topic){\n    case \"SoundNode01/sensor\":\n        flow.set(\"sensor\", msg.payload);\n        // msg = null;\n        break;\n    case \"SoundNode01/sound\":\n        flow.set(\"sound\",msg.payload);\n        // msg = null;\n        break;\n}\n\nlet sound = flow.get(\"sound\");\nlet sensor = flow.get(\"sensor\");\nlet sensorHigh = flow.get(\"sensorHigh\");\nlet sensorLow = flow.get(\"sensorLow\");\n\nlet mappedSensor = map_range(sensor, sensorHigh, sensorLow, 80, 200);\n\nif (mappedSensor <= sound || sensor >= sensorHigh) {\n    msg.payload = \"C\";\n} else if(mappedSensor >= sound || sensor <= sensorLow){\n    msg.payload = \"O\";\n}\n\n// msg.payload = mappedSensor;\n\nreturn msg;\n\nfunction map_range(x, in_min, in_max, out_min, out_max) {\n  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;\n}","outputs":1,"noerr":0,"x":690,"y":620,"wires":[["d6f2da88.66dff8","10c8ddd3.95f582"]]}]
+[
+    {
+        "id": "8c33d01c.9cece",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "99d430cc.eaadf",
+        "type": "mqtt in",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "topic": "SoundNode01/sensor",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "e75a20fe.d3654",
+        "x": 207.00001907348633,
+        "y": 134.00000381469727,
+        "wires": [
+            [
+                "66ece34c.1cb6dc"
+            ]
+        ]
+    },
+    {
+        "id": "842254b7.845eb8",
+        "type": "mqtt in",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "topic": "SoundNode01/sound",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "e75a20fe.d3654",
+        "x": 207.00001907348633,
+        "y": 234.00000381469727,
+        "wires": [
+            [
+                "66ece34c.1cb6dc"
+            ]
+        ]
+    },
+    {
+        "id": "929e529a.c8f91",
+        "type": "mqtt out",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "topic": "SoundNode01/stepper",
+        "qos": "",
+        "retain": "",
+        "broker": "e75a20fe.d3654",
+        "x": 1030,
+        "y": 880,
+        "wires": []
+    },
+    {
+        "id": "ac0f63e1.49a07",
+        "type": "inject",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "topic": "",
+        "payload": "C",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 770,
+        "y": 800,
+        "wires": [
+            [
+                "929e529a.c8f91"
+            ]
+        ]
+    },
+    {
+        "id": "4e1ac0ec.74ba",
+        "type": "inject",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "topic": "",
+        "payload": "O",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 770,
+        "y": 900,
+        "wires": [
+            [
+                "929e529a.c8f91"
+            ]
+        ]
+    },
+    {
+        "id": "f807b58d.504498",
+        "type": "inject",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "topic": "",
+        "payload": "15",
+        "payloadType": "num",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "x": 230,
+        "y": 880,
+        "wires": [
+            [
+                "68c8481b.30c228"
+            ]
+        ]
+    },
+    {
+        "id": "db5fb97e.7672f8",
+        "type": "inject",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "topic": "",
+        "payload": "190",
+        "payloadType": "num",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "x": 210,
+        "y": 800,
+        "wires": [
+            [
+                "57672f46.7d8"
+            ]
+        ]
+    },
+    {
+        "id": "66ece34c.1cb6dc",
+        "type": "function",
+        "z": "8c33d01c.9cece",
+        "name": "Sound to opening",
+        "func": "switch(msg.topic){\n    case \"SoundNode01/sensor\":\n        flow.set(\"sensor01\", msg.payload);\n        msg.payload = null;\n        break;\n    case \"SoundNode01/sound\":\n        flow.set(\"sound01\",msg.payload);\n        msg.payload = null;\n        break;\n    case \"SoundNode02/sensor\":\n        flow.set(\"sensor02\", msg.payload);\n        msg.payload = null;\n        break;\n    case \"SoundNode02/sound\":\n        flow.set(\"sound02\",msg.payload);\n        msg.payload = null;\n        break;\n    case \"SoundNode03/sensor\":\n        flow.set(\"sensor03\", msg.payload);\n        msg.payload = null;\n        break;\n    case \"SoundNode03/sound\":\n        flow.set(\"sound03\",msg.payload);\n        msg.payload = null;\n        break;\n}\n\nlet sound = [flow.get(\"sound01\"), flow.get(\"sound02\"), flow.get(\"sound03\")];\n// let sensor = [flow.get(\"sensor01\"), flow.get(\"sensor02\"), flow.get(\"sensor03\")];\nlet sensor = [100, 100, 100];\nlet sensorHigh = flow.get(\"sensorHigh\");\nlet sensorLow = flow.get(\"sensorLow\");\nlet motorOut = [];\n\nflow.set(\"sensor01\", null);\nflow.set(\"sound01\", null);\nflow.set(\"sensor02\", null);\nflow.set(\"sound02\", null);\nflow.set(\"sensor03\", null);\nflow.set(\"sound03\", null);\n\nfor (let i = 0; i < 3; i++){\n    if(sound[i]){\n        let mappedSensor = map_range(sensor[i], sensorHigh, sensorLow, 80, 200);    \n\n        if (mappedSensor < sound[i] || sensor[i] >= sensorHigh) {\n        msg.payload = \"C\";\n        } else if(mappedSensor >= sound[i] || sensor[i] <= sensorLow){\n        msg.payload = \"O\";\n        }\n        \n        for(let j = 0; j < 3; j++){\n            motorOut[j] = null;\n            if(j==i){\n                motorOut[j] = msg;\n            }\n        }\n    }\n}\n\n\n// return []\n// msg = motorOut;\nreturn motorOut;\n\n// msg.payload = mappedSensor;\n\nreturn msg;\n\nfunction map_range(x, in_min, in_max, out_min, out_max) {\n  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;\n}",
+        "outputs": 3,
+        "noerr": 0,
+        "x": 610,
+        "y": 360,
+        "wires": [
+            [
+                "d6f2da88.66dff8",
+                "10c8ddd3.95f582"
+            ],
+            [
+                "7789eda3.0777b4",
+                "a3c8d6d8.432ce8"
+            ],
+            [
+                "fc6ec533.fd1618",
+                "688bca00.21b1d8"
+            ]
+        ]
+    },
+    {
+        "id": "57672f46.7d8",
+        "type": "function",
+        "z": "8c33d01c.9cece",
+        "name": "Value when opened(sensorHigh)",
+        "func": "flow.set(\"sensorHigh\", msg.payload);",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 550,
+        "y": 800,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "68c8481b.30c228",
+        "type": "function",
+        "z": "8c33d01c.9cece",
+        "name": "Value when closed (sensorLow)",
+        "func": "flow.set(\"sensorLow\", msg.payload);",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 550,
+        "y": 880,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "d6f2da88.66dff8",
+        "type": "mqtt out",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "topic": "SoundNode01/stepper",
+        "qos": "",
+        "retain": "",
+        "broker": "e75a20fe.d3654",
+        "x": 1047.0000190734863,
+        "y": 194.00000381469727,
+        "wires": []
+    },
+    {
+        "id": "10c8ddd3.95f582",
+        "type": "debug",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 1027.0000190734863,
+        "y": 154.00000381469727,
+        "wires": []
+    },
+    {
+        "id": "19041b91.5ba094",
+        "type": "mqtt in",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "topic": "SoundNode02/sensor",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "e75a20fe.d3654",
+        "x": 200,
+        "y": 300,
+        "wires": [
+            [
+                "66ece34c.1cb6dc"
+            ]
+        ]
+    },
+    {
+        "id": "bfb22596.e5e348",
+        "type": "mqtt in",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "topic": "SoundNode02/sound",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "e75a20fe.d3654",
+        "x": 200,
+        "y": 400,
+        "wires": [
+            [
+                "66ece34c.1cb6dc"
+            ]
+        ]
+    },
+    {
+        "id": "7789eda3.0777b4",
+        "type": "mqtt out",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "topic": "SoundNode02/stepper",
+        "qos": "",
+        "retain": "",
+        "broker": "e75a20fe.d3654",
+        "x": 1040,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "a3c8d6d8.432ce8",
+        "type": "debug",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 1020,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "eb26c17.dcfb64",
+        "type": "mqtt in",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "topic": "SoundNode03/sensor",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "e75a20fe.d3654",
+        "x": 200,
+        "y": 480,
+        "wires": [
+            [
+                "66ece34c.1cb6dc"
+            ]
+        ]
+    },
+    {
+        "id": "6b205987.cefdf8",
+        "type": "mqtt in",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "topic": "SoundNode03/sound",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "e75a20fe.d3654",
+        "x": 200,
+        "y": 580,
+        "wires": [
+            [
+                "66ece34c.1cb6dc"
+            ]
+        ]
+    },
+    {
+        "id": "fc6ec533.fd1618",
+        "type": "mqtt out",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "topic": "SoundNode03/stepper",
+        "qos": "",
+        "retain": "",
+        "broker": "e75a20fe.d3654",
+        "x": 1040,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "688bca00.21b1d8",
+        "type": "debug",
+        "z": "8c33d01c.9cece",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 1010,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "e75a20fe.d3654",
+        "type": "mqtt-broker",
+        "z": "",
+        "name": "",
+        "broker": "broker.shiftr.io",
+        "port": "1883",
+        "clientid": "Node-Red",
+        "usetls": false,
+        "compatmode": true,
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": ""
+    }
+]
